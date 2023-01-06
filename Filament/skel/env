@@ -1,0 +1,19 @@
+#---------------- CUSTOM/OVERRIDES -----------------#
+
+## MAILTRAP
+#MAIL_MAILER=smtp
+#MAIL_HOST=smtp.mailtrap.io
+#MAIL_PORT=2525
+#MAIL_USERNAME=91fccce7fd730c
+#MAIL_PASSWORD=fcee751380577f
+#MAIL_ENCRYPTION=null
+#MAIL_FROM_ADDRESS="no-reply@apede.org"
+#MAIL_FROM_NAME="${APP_NAME}"
+
+# FOR SENDINBLUE
+# MAIL_MAILER=sendinblue
+# MAIL_FROM_ADDRESS="jack.whoami@gmail.com"
+# MAIL_FROM_NAME="${APP_NAME}"
+# SENDINBLUE_KEY=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
+
+CAPTCHA_DISABLE=false

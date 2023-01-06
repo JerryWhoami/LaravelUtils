@@ -1,0 +1,108 @@
+server {
+        listen 80;
+        listen [::]:80;
+
+        return 301 https://$host$request_uri; # Redirect
+        #return 301 https://mi.apede.org;
+
+#        root /home/www/portal;
+#        index index.html index.htm index.nginx-debian.html;
+#
+#        server_name mi.apede.org;
+#
+#        location / {
+#                try_files $uri $uri/ =404;
+#        }
+}
+
+server {
+    #listen   [::]:443 ssl;
+    listen 443;
+    ssl on;
+    ssl_certificate /etc/ssl/certs/portal/ssl-bundle.crt;
+    ssl_certificate_key /etc/ssl/private/mi.apede.org.key;
+    server_name mi.apede.org;
+
+    root /home/www/portal/fe/v1/public;
+    access_log /var/log/nginx/nginx.vhost.access.log;
+    error_log /var/log/nginx/nginx.vhost.error.log;
+
+    charset utf-8;
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+    error_page 404 /index.php;
+    
+    location / {
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;        
+#        try_files $uri $uri/ /index.php?$args;
+        try_files $uri /index.php?$args;
+    }
+    
+    location /admin {
+        # Root for this project
+        root /home/www/portal/be/v1/public;
+
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+
+        # Rewrite $uri=/admin/xyz back to just $uri=/xyz
+        rewrite ^/admin/(.*)$ /$1 break;
+
+        # Try to send static file at $url or $uri/
+        # Else try /index.php (which will hit location ~\.php$ below)
+        try_files $uri $uri/ /index.php?$args;
+    }
+    
+    location /phpmyadmin {
+        root /usr/share/;
+        index index.php index.html index.htm;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+
+        location ~ ^/phpmyadmin/(.+\.php)$ {
+            try_files $uri =404;
+            root /usr/share/;
+            fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            include fastcgi_params;
+        }
+
+        location ~* ^/phpmyadmin/(.+\.(jpg|jpeg|gif|css|png|js|ico|html|xml|txt))$ {
+            root /usr/share/;
+        }
+    }
+
+    location ~ \.php$ {
+        # At this point, $uri is /index.php, $args=any GET ?key=value and $request_uri = /admin/xyz.
+        # But we don't want to pass /admin/xyz to PHP-FPM, we want just /xyz to pass to fastcgi REQUESTE_URI below. 
+        # This allows laravel to see /admin/xyz as just /xyz in its router.  
+        # So laravel route('/xyz') responds to /admin/xyz as you would expect.
+        set $newurl $request_uri;
+        if ($newurl ~ ^/admin(.*)$) {
+            set $newurl $1;
+            root /home/www/portal/be/v1/public;
+        }
+
+        # Pass all PHP files to fastcgi php fpm unix socket
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+        # Use php fpm sock which is installed on your machine like php7.2, php5.6
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock; 
+        fastcgi_index index.php;
+        include fastcgi_params;
+        # Here we are telling php fpm to use updated route that we've created to properly
+        # response to laravel routes.
+        fastcgi_param REQUEST_URI $newurl;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_intercept_errors off;
+        fastcgi_buffer_size 16k;
+        fastcgi_buffers 4 16k;
+    }
+
+    # Deny .ht* access
+    location ~ /\.ht {
+        deny all;
+    }    
+    
+}

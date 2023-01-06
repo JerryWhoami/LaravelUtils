@@ -1,0 +1,21 @@
+composer.json
+-------------
+1,
+"post-update-cmd": [
+    // ...
+    "@php artisan filament:upgrade"
+],
+
+From Skel
+
+1. Update .env file
+2. Update db info in .env file
+3. Remove default route from web.php
+4. Copy files from skel
+  4.1 - database
+  4.2 - lang/es
+  4.3 - app
+  4.4 - config
+  4.5 - resources
+
+5. Start server pa serve
